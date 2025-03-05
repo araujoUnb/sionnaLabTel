@@ -1,6 +1,8 @@
 import tensorflow as tf
+import numpy as np
 import sionna
 from sionna.constants import PI
+from matplotlib import pyplot as plt
 
 class RadarSource(tf.keras.layers.Layer):
     """
@@ -197,3 +199,68 @@ class FMCWSource(RadarSource):
             return waveform
         else:
             raise ValueError("output_format must be either 'Sweeps' or 'Samples'.")
+
+
+if __name__ == '__main__':
+    # Test using 'Samples' output format
+    fmcw_samples = FMCWSource(
+        sample_rate=1e6,
+        sweep_time=1e-4,
+        sweep_bandwidth=1e5,
+        sweep_direction='Up',
+        sweep_interval='Positive',
+        output_format='Samples',
+        num_samples=1000
+    )
+    waveform_samples = fmcw_samples(1000)  # pass number of samples as input
+    print("Samples waveform shape:", waveform_samples.shape)
+    print("Samples waveform dtype:", waveform_samples.dtype)
+
+    # Plot the real and imaginary parts for the 'Samples' output.
+    t_samples = tf.linspace(0.0, 1e-4, 1000).numpy()
+    plt.figure(figsize=(10, 4))
+    plt.plot(t_samples, tf.math.real(waveform_samples).numpy(), label='Real')
+    plt.plot(t_samples, tf.math.imag(waveform_samples).numpy(), label='Imaginary')
+    plt.title("FMCW Baseband Signal - Samples")
+    plt.xlabel("Time (s)")
+    plt.ylabel("Amplitude")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+    # Plot the spectrogram of the absolute value of the waveform
+    plt.figure(figsize=(10, 4))
+    # Using a window size (NFFT) of 256 and overlap of 128 samples.
+    plt.specgram(np.abs(waveform_samples.numpy()), NFFT=256, Fs=1e6, noverlap=128, cmap='viridis')
+    plt.title("Spectrogram of FMCW Baseband Signal - Samples")
+    plt.xlabel("Time (s)")
+    plt.ylabel("Frequency (Hz)")
+    plt.colorbar(label="Intensity (dB)")
+    plt.show()
+
+    # Test using 'Sweeps' output format with Triangle mode
+    fmcw_sweeps = FMCWSource(
+        sample_rate=1e6,
+        sweep_time=1e-4,
+        sweep_bandwidth=1e5,
+        sweep_direction='Triangle',
+        sweep_interval='Positive',
+        output_format='Sweeps',
+        num_sweeps=5
+    )
+    waveform_sweeps = fmcw_sweeps()
+    print("Sweeps waveform shape:", waveform_sweeps.shape)
+    print("Sweeps waveform dtype:", waveform_sweeps.dtype)
+
+    # Plot the real and imaginary parts of the first sweep.
+    N = waveform_sweeps.shape[1]
+    t_sweep = tf.linspace(0.0, 1e-4, N).numpy()
+    plt.figure(figsize=(10, 4))
+    plt.plot(t_sweep, tf.math.real(waveform_sweeps[0]).numpy(), label='Real')
+    plt.plot(t_sweep, tf.math.imag(waveform_sweeps[0]).numpy(), label='Imaginary')
+    plt.title("FMCW Baseband Signal - First Sweep (Triangle)")
+    plt.xlabel("Time (s)")
+    plt.ylabel("Amplitude")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
